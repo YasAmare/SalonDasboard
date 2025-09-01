@@ -117,9 +117,22 @@
 
     function setFilter(status) {
       currentFilter = status;
-      document.querySelectorAll(".filter-bar button").forEach(btn => btn.classList.remove("active"));
-      document.querySelector(`.filter-bar button:contains('${status}')`)?.classList.add("active");
-      loadAppointments();
+      document.querySelectorAll(".filter-bar button").forEach(btn => {
+        btn.classList.remove("active");
+        if (btn.textContent === status) btn.classList.add("active");
+      });
+      filterAppointments();
+    }
+
+    function filterAppointments() {
+      document.querySelectorAll(".card").forEach(card => {
+        const status = card.getAttribute("data-status");
+        if (currentFilter === "All" || status === currentFilter) {
+          card.style.display = "block";
+        } else {
+          card.style.display = "none";
+        }
+      });
     }
 
     function loadAppointments() {
@@ -137,9 +150,7 @@
           const timestamp = new Date(data.Timestamp);
           const today = new Date();
           const diffDays = Math.floor((today - timestamp) / (1000 * 60 * 60 * 24));
-
           if (diffDays > 7) return;
-          if (currentFilter !== "All" && data.Status !== currentFilter) return;
 
           if (!bookingsByDay[date]) bookingsByDay[date] = [];
           bookingsByDay[date].push({ key, data });
@@ -159,6 +170,7 @@
           bookingsByDay[date].forEach(({ key, data }) => {
             const card = document.createElement("div");
             card.className = "card";
+            card.setAttribute("data-status", data.Status);
             card.innerHTML = `
               <p><strong>Name:</strong> ${data.Name}</p>
               <p><strong>Phone:</strong> ${data.Phone}</p>
@@ -177,6 +189,8 @@
 
           container.appendChild(section);
         });
+
+        filterAppointments();
       });
     }
 
