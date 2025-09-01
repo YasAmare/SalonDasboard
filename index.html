@@ -135,7 +135,6 @@
         card.style.display = (currentFilter === "All" || status === currentFilter) ? "block" : "none";
       });
     }
-
     function loadAppointments() {
       const container = document.getElementById("dashboard");
       container.innerHTML = "<p>Loading appointments...</p>";
@@ -198,7 +197,7 @@
     function updateStatus(refID, newStatus) {
       db.ref("bookings/" + refID).once("value").then(snapshot => {
         const booking = snapshot.val();
-        const phone = booking.Phone;
+        const chatId = booking.chat_id;
         const name = booking.Name;
         const service = booking.Service;
         const date = booking.Date;
@@ -220,7 +219,7 @@
             Status: "Rescheduled",
             Message: message
           }).then(() => {
-            sendTelegram(phone, message);
+            if (chatId) sendTelegram(chatId, message);
             loadAppointments();
           });
           return;
@@ -230,19 +229,19 @@
           Status: newStatus,
           Message: message
         }).then(() => {
-          sendTelegram(phone, message);
+          if (chatId) sendTelegram(chatId, message);
           loadAppointments();
         });
       });
     }
 
-    function sendTelegram(phone, message) {
+    function sendTelegram(chatId, message) {
       fetch("https://api.telegram.org/bot8455761527:AAGJWQoGdo7iBcbV_uaQ8xeEl8A86YA93e8/sendMessage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          chat_id: "-1003010432485",
-          text: `📩 Message for ${phone}:\n${message}`
+          chat_id: chatId,
+          text: message
         })
       }).then(() => {
         console.log("Telegram message sent ✅");
