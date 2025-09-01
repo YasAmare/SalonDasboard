@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Salon Admin Dashboard</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+      margin: 0;
+    }
+    h2, h3 {
+      text-align: center;
+    }
+    .day-section {
+      margin-bottom: 30px;
+      padding: 15px;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.05);
+    }
+    .day-label {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 5px;
+    }
+    .card {
+      background: #e8f5e9;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .card p {
+      margin: 5px 0;
+    }
+    .card button {
+      margin-right: 10px;
+      margin-top: 10px;
+      padding: 8px 12px;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .card button:hover {
+      background-color: #388E3C;
+    }
+    .message {
+      margin-top: 10px;
+      color: #d32f2f;
+      font-weight: bold;
+    }
+    @media (max-width: 600px) {
+      .card {
+        font-size: 14px;
+      }
+      .card button {
+        width: 100%;
+        margin-bottom: 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Salon Admin Dashboard</h2>
+  <div id="dashboard"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AlzaSyAGhPaWhjPc9l6cWa4nDkg8Kt3c7H0UzM",
+      authDomain: "salonbooking-6d5aa.firebaseapp.com",
+      databaseURL: "https://salonbooking-6d5aa-default-rtdb.firebaseio.com/",
+      projectId: "salonbooking-6d5aa",
+      storageBucket: "salonbooking-6d5aa.appspot.com",
+      messagingSenderId: "11411859014",
+      appId: "1:11411859014:web:926076fa2feba87280c47"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function loadAppointments() {
+      const container = document.getElementById("dashboard");
+      container.innerHTML = "<p>Loading appointments...</p>";
+
+      db.ref("bookings").once("value").then(snapshot => {
+        container.innerHTML = "";
+        const bookingsByDay = {};
+
+        snapshot.forEach(child => {
+          const data = child.val();
+          const key = child.key;
+          const date = data.Date;
+          const timestamp = new Date(data.Timestamp);
+          const today = new Date();
+          const diffDays = Math.floor((today - timestamp) / (1000 * 60 * 60 * 24));
+
+          // Skip if older than 7 days
+          if (diffDays > 7) return;
+
+          if (!bookingsByDay[date]) bookingsByDay[date] = [];
+          bookingsByDay[date].push({ key, data });
+        });
+
+        const sortedDates = Object.keys(bookingsByDay).sort((a, b) => new Date(b) - new Date(a));
+
+        sortedDates.forEach(date => {
+          const section = document.createElement("div");
+          section.className = "day-section";
+          if (date === getYesterday()) section.style.display = "none";
+
+          const label = document.createElement("div");
+          label.className = "day-label";
+          label.textContent = formatDateLabel(date);
+          section.appendChild(label);
+
+          bookingsByDay[date].forEach(({ key, data }) => {
+            const card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML = `
+              <p><strong>Name:</strong> ${data.Name}</p>
+              <p><strong>Phone:</strong> ${data.Phone}</p>
+              <p><strong>Service:</strong> ${data.Service}</p>
+              <p><strong>Date:</strong> ${data.Date}</p>
+              <p><strong>Time:</strong> ${data.Time}</p>
+              <p><strong>Stylist:</strong> ${data.Stylist || "Any"}</p>
+              <p><strong>Status:</strong> ${data.Status}</p>
+              ${data.Status !== "Confirmed" && data.Message ? `<div class="message">${data.Message}</div>` : ""}
+              <button onclick="updateStatus('${key}', 'Confirmed')">Confirm</button>
+              <button onclick="updateStatus('${key}', 'Canceled')">Cancel</button>
+              <button onclick="reschedule('${key}')">Reschedule</button>
+            `;
+            section.appendChild(card);
+          });
+
+          container.appendChild(section);
+        });
+      });
+    }
+
+    function updateStatus(refID, newStatus) {
+      const updates = { Status: newStatus };
+      if (newStatus === "Canceled") {
+        updates.Message = "Your appointment has been canceled. Please contact us to rebook.";
+      } else if (newStatus === "Confirmed") {
+        updates.Message = "";
+      }
+      db.ref("bookings/" + refID).update(updates).then(loadAppointments);
+    }
+
+    function reschedule(refID) {
+      const newDate = prompt("Enter new date (YYYY-MM-DD):");
+      const newTime = prompt("Enter new time (HH:MM):");
+      if (newDate && newTime) {
+        db.ref("bookings/" + refID).update({
+          Date: newDate,
+          Time: newTime,
+          Status: "Rescheduled",
+          Message: `Your appointment has been rescheduled to ${newDate} at ${newTime}.`
+        }).then(loadAppointments);
+      }
+    }
+
+    function formatDateLabel(dateStr) {
+      const date = new Date(dateStr);
+      return date.toDateString();
+    }
+
+    function getYesterday() {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      return d.toISOString().split("T")[0];
+    }
+
+    loadAppointments();
+  </script>
+</body>
+</html>
