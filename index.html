@@ -18,17 +18,21 @@
     .filter-bar {
       display: flex;
       justify-content: center;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      overflow-x: auto;
       gap: 10px;
       margin-bottom: 20px;
+      padding-bottom: 5px;
     }
     .filter-bar button {
+      flex: 0 0 auto;
       padding: 10px 16px;
       border: none;
       background-color: #0088cc;
       color: white;
       border-radius: 6px;
       cursor: pointer;
+      white-space: nowrap;
     }
     .filter-bar button.active {
       background-color: #005f99;
@@ -127,11 +131,7 @@
     function filterAppointments() {
       document.querySelectorAll(".card").forEach(card => {
         const status = card.getAttribute("data-status");
-        if (currentFilter === "All" || status === currentFilter) {
-          card.style.display = "block";
-        } else {
-          card.style.display = "none";
-        }
+        card.style.display = (currentFilter === "All" || status === currentFilter) ? "block" : "none";
       });
     }
 
@@ -195,34 +195,45 @@
     }
 
     function updateStatus(refID, newStatus) {
-      const updates = { Status: newStatus };
-      if (newStatus === "Canceled") {
-        updates.Message = "Your appointment has been canceled. Please contact us to rebook.";
-      } else if (newStatus === "Confirmed") {
-        updates.Message = "";
-      }
-      db.ref("bookings/" + refID).update(updates).then(loadAppointments);
-    }
+      db.ref("bookings/" + refID).once("value").then(snapshot => {
+        const booking = snapshot.val();
+        const phone = booking.Phone;
+        const name = booking.Name;
+        const service = booking.Service;
+        const date = booking.Date;
+        const time = booking.Time;
 
-    function reschedule(refID) {
-      const newDate = prompt("Enter new date (YYYY-MM-DD):");
-      const newTime = prompt("Enter new time (HH:MM):");
-      if (newDate && newTime) {
+        let message = "";
+        if (newStatus === "Canceled") {
+          message = `❌ Hello ${name}, your appointment for ${service} on ${date} at ${time} has been canceled. Please contact us to rebook.`;
+        } else if (newStatus === "Confirmed") {
+          message = `✅ Hi ${name}, your appointment for ${service} on ${date} at ${time} is confirmed. See you soon!`;
+        } else if (newStatus === "Rescheduled") {
+          const newDate = prompt("Enter new date (YYYY-MM-DD):");
+          const newTime = prompt("Enter new time (HH:MM):");
+          if (!newDate || !newTime) return;
+          message = `🔄 Hi ${name}, your appointment has been rescheduled to ${newDate} at ${newTime}.`;
+          db.ref("bookings/" + refID).update({
+            Date: newDate,
+            Time: newTime,
+            Status: "Rescheduled",
+            Message: message
+          }).then(() => {
+            sendTelegram(phone, message);
+            loadAppointments();
+          });
+          return;
+        }
+
         db.ref("bookings/" + refID).update({
-          Date: newDate,
-          Time: newTime,
-          Status: "Rescheduled",
-          Message: `Your appointment has been rescheduled to ${newDate} at ${newTime}.`
-        }).then(loadAppointments);
-      }
+          Status: newStatus,
+          Message: message
+        }).then(() => {
+          sendTelegram(phone, message);
+          loadAppointments();
+        });
+      });
     }
 
-    function formatDateLabel(dateStr) {
-      const date = new Date(dateStr);
-      return date.toDateString();
-    }
-
-    loadAppointments();
-  </script>
-</body>
-</html>
+    function sendTelegram(phone, message) {
+      fetch("https://api.telegram.org[43dcd9a7-70db-4a1f-b0ae-981daa162054](https://github.com/qolbudr/huniaja/tree/dfffc3911a0f8482d668f6ac884f7ca81dbe151b/laravel%2Fresources%2Fviews%2Fmaster.blade.php?citationMarker=43dcd9a7-70db-4a1f-b0ae-981daa162054 "1")[43dcd9a7-70db-4a1f-b0ae-981daa162054](https://github.com/Joshi-labs/gamedev/tree/2dd18cd352d5590f29d784d3e9142c67979959c6/APS%20Talks%2Findex2.php?citationMarker=43dcd9a7-70db-4a1f-b0ae-981daa162054 "2")
