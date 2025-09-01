@@ -11,8 +11,27 @@
       padding: 20px;
       margin: 0;
     }
-    h2, h3 {
+    h2 {
       text-align: center;
+      margin-bottom: 10px;
+    }
+    .filter-bar {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .filter-bar button {
+      padding: 10px 16px;
+      border: none;
+      background-color: #0088cc;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .filter-bar button.active {
+      background-color: #005f99;
     }
     .day-section {
       margin-bottom: 30px;
@@ -69,6 +88,14 @@
 </head>
 <body>
   <h2>Salon Admin Dashboard</h2>
+
+  <div class="filter-bar">
+    <button class="active" onclick="setFilter('All')">All</button>
+    <button onclick="setFilter('Confirmed')">Confirmed</button>
+    <button onclick="setFilter('Canceled')">Canceled</button>
+    <button onclick="setFilter('Rescheduled')">Rescheduled</button>
+  </div>
+
   <div id="dashboard"></div>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -86,6 +113,14 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    let currentFilter = "All";
+
+    function setFilter(status) {
+      currentFilter = status;
+      document.querySelectorAll(".filter-bar button").forEach(btn => btn.classList.remove("active"));
+      document.querySelector(`.filter-bar button:contains('${status}')`)?.classList.add("active");
+      loadAppointments();
+    }
 
     function loadAppointments() {
       const container = document.getElementById("dashboard");
@@ -103,8 +138,8 @@
           const today = new Date();
           const diffDays = Math.floor((today - timestamp) / (1000 * 60 * 60 * 24));
 
-          // Skip if older than 7 days
           if (diffDays > 7) return;
+          if (currentFilter !== "All" && data.Status !== currentFilter) return;
 
           if (!bookingsByDay[date]) bookingsByDay[date] = [];
           bookingsByDay[date].push({ key, data });
@@ -115,7 +150,6 @@
         sortedDates.forEach(date => {
           const section = document.createElement("div");
           section.className = "day-section";
-          if (date === getYesterday()) section.style.display = "none";
 
           const label = document.createElement("div");
           label.className = "day-label";
@@ -172,12 +206,6 @@
     function formatDateLabel(dateStr) {
       const date = new Date(dateStr);
       return date.toDateString();
-    }
-
-    function getYesterday() {
-      const d = new Date();
-      d.setDate(d.getDate() - 1);
-      return d.toISOString().split("T")[0];
     }
 
     loadAppointments();
