@@ -17,15 +17,16 @@
     }
     .filter-bar {
       display: flex;
-      justify-content: center;
       flex-wrap: nowrap;
       overflow-x: auto;
       gap: 10px;
       margin-bottom: 20px;
       padding-bottom: 5px;
+      -webkit-overflow-scrolling: touch;
     }
     .filter-bar button {
       flex: 0 0 auto;
+      min-width: 120px;
       padding: 10px 16px;
       border: none;
       background-color: #0088cc;
@@ -147,7 +148,7 @@
           const data = child.val();
           const key = child.key;
           const date = data.Date;
-          const timestamp = new Date(data.Timestamp);
+          const timestamp = data.Timestamp ? new Date(data.Timestamp) : new Date(data.Date);
           const today = new Date();
           const diffDays = Math.floor((today - timestamp) / (1000 * 60 * 60 * 24));
           if (diffDays > 7) return;
@@ -236,4 +237,26 @@
     }
 
     function sendTelegram(phone, message) {
-      fetch("https://api.telegram.org[43dcd9a7-70db-4a1f-b0ae-981daa162054](https://github.com/qolbudr/huniaja/tree/dfffc3911a0f8482d668f6ac884f7ca81dbe151b/laravel%2Fresources%2Fviews%2Fmaster.blade.php?citationMarker=43dcd9a7-70db-4a1f-b0ae-981daa162054 "1")[43dcd9a7-70db-4a1f-b0ae-981daa162054](https://github.com/Joshi-labs/gamedev/tree/2dd18cd352d5590f29d784d3e9142c67979959c6/APS%20Talks%2Findex2.php?citationMarker=43dcd9a7-70db-4a1f-b0ae-981daa162054 "2")
+      fetch("https://api.telegram.org/bot8455761527:AAGJWQoGdo7iBcbV_uaQ8xeEl8A86YA93e8/sendMessage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: "-1003010432485",
+          text: `📩 Message for ${phone}:\n${message}`
+        })
+      }).then(() => {
+        console.log("Telegram message sent ✅");
+      }).catch(() => {
+        console.log("Telegram message failed ❌");
+      });
+    }
+
+    function formatDateLabel(dateStr) {
+      const date = new Date(dateStr);
+      return date.toDateString();
+    }
+
+    loadAppointments();
+  </script>
+</body>
+</html>
