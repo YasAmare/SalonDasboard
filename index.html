@@ -224,7 +224,6 @@
         filterAppointments();
       });
     }
-    }
 
     function updateStatus(refID, newStatus) {
       db.ref("bookings/" + refID).once("value").then(snapshot => {
