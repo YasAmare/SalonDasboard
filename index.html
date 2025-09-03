@@ -80,6 +80,25 @@
       color: #d32f2f;
       font-weight: bold;
     }
+    .status-badge {
+      margin-top: 10px;
+      padding: 8px;
+      font-weight: bold;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .Confirmed {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .Canceled {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .Rescheduled {
+      background-color: #cce5ff;
+      color: #004085;
+    }
     @media (max-width: 600px) {
       .card {
         font-size: 14px;
@@ -135,6 +154,7 @@
         card.style.display = (currentFilter === "All" || status === currentFilter) ? "block" : "none";
       });
     }
+
     function loadAppointments() {
       const container = document.getElementById("dashboard");
       container.innerHTML = "<p>Loading appointments...</p>";
@@ -167,10 +187,24 @@
           label.textContent = formatDateLabel(date);
           section.appendChild(label);
 
+          bookingsByDay[date].sort((a, b) => new Date(b.data.Timestamp || b.data.Date) - new Date(a.data.Timestamp || a.data.Date));
+
           bookingsByDay[date].forEach(({ key, data }) => {
             const card = document.createElement("div");
             card.className = "card";
             card.setAttribute("data-status", data.Status);
+
+            let actions = "";
+            if (data.Status === "Pending") {
+              actions = `
+                <button onclick="updateStatus('${key}', 'Confirmed')">Confirm</button>
+                <button onclick="updateStatus('${key}', 'Canceled')">Cancel</button>
+                <button onclick="reschedule('${key}')">Reschedule</button>
+              `;
+            } else {
+              actions = `<div class="status-badge ${data.Status}">${data.Status}</div>`;
+            }
+
             card.innerHTML = `
               <p><strong>Name:</strong> ${data.Name}</p>
               <p><strong>Phone:</strong> ${data.Phone}</p>
@@ -178,11 +212,8 @@
               <p><strong>Date:</strong> ${data.Date}</p>
               <p><strong>Time:</strong> ${data.Time}</p>
               <p><strong>Stylist:</strong> ${data.Stylist || "Any"}</p>
-              <p><strong>Status:</strong> ${data.Status}</p>
-              ${data.Status !== "Confirmed" && data.Message ? `<div class="message">${data.Message}</div>` : ""}
-              <button onclick="updateStatus('${key}', 'Confirmed')">Confirm</button>
-              <button onclick="updateStatus('${key}', 'Canceled')">Cancel</button>
-              <button onclick="reschedule('${key}')">Reschedule</button>
+              ${data.Message ? `<div class="message">${data.Message}</div>` : ""}
+              ${actions}
             `;
             section.appendChild(card);
           });
@@ -192,6 +223,7 @@
 
         filterAppointments();
       });
+    }
     }
 
     function updateStatus(refID, newStatus) {
@@ -208,25 +240,35 @@
           message = `❌ Hello ${name}, your appointment for ${service} on ${date} at ${time} has been canceled. Please contact us to rebook.`;
         } else if (newStatus === "Confirmed") {
           message = `✅ Hi ${name}, your appointment for ${service} on ${date} at ${time} is confirmed. See you soon!`;
-        } else if (newStatus === "Rescheduled") {
-          const newDate = prompt("Enter new date (YYYY-MM-DD):");
-          const newTime = prompt("Enter new time (HH:MM):");
-          if (!newDate || !newTime) return;
-          message = `🔄 Hi ${name}, your appointment has been rescheduled to ${newDate} at ${newTime}.`;
-          db.ref("bookings/" + refID).update({
-            Date: newDate,
-            Time: newTime,
-            Status: "Rescheduled",
-            Message: message
-          }).then(() => {
-            if (chatId) sendTelegram(chatId, message);
-            loadAppointments();
-          });
-          return;
         }
 
         db.ref("bookings/" + refID).update({
           Status: newStatus,
+          Message: message
+        }).then(() => {
+          if (chatId) sendTelegram(chatId, message);
+          loadAppointments();
+        });
+      });
+    }
+
+    function reschedule(refID) {
+      db.ref("bookings/" + refID).once("value").then(snapshot => {
+        const booking = snapshot.val();
+        const chatId = booking.chat_id;
+        const name = booking.Name;
+        const service = booking.Service;
+
+        const newDate = prompt("Enter new date (YYYY-MM-DD):");
+        const newTime = prompt("Enter new time (HH:MM):");
+        if (!newDate || !newTime) return;
+
+        const message = `🔄 Hi ${name}, your appointment for ${service} has been rescheduled to ${newDate} at ${newTime}.`;
+
+        db.ref("bookings/" + refID).update({
+          Date: newDate,
+          Time: newTime,
+          Status: "Rescheduled",
           Message: message
         }).then(() => {
           if (chatId) sendTelegram(chatId, message);
